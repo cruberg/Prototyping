@@ -57,7 +57,7 @@ class Data(object):
         df.columns = df.columns.droplevel()
         return df[['open']]
         
-    def get_universe_prices(self,lookback):
+    def get_all_prices(self,lookback):
         import pandas as pd
         _prices = pd.DataFrame()
 
@@ -81,3 +81,40 @@ class Data(object):
             num += 1
 
         return _prices
+
+    def get_universe_prices(self,symbolsList,lookback):
+        import pandas as pd
+        _prices = pd.DataFrame()
+
+        symbols = list(set(symbolsList))
+
+
+        if len(symbols) > 200:
+
+            chunks = self.get_chunks(symbolsList,200)
+
+            num = 0
+
+            for c in sorted(chunks):
+
+                data = self.api.get_barset(c, 'day', limit = lookback).df
+                data = data.iloc[:, data.columns.get_level_values(1)=='close'].swaplevel(axis=1)
+                data.columns = data.columns.droplevel()
+                data = data.ffill()
+
+                if num == 0:
+                    _prices = data
+                else:
+                    _prices = _prices.merge(data,left_index=True,right_index=True,how='outer')
+
+                num += 1
+
+            return _prices
+
+        else:
+            print("HERE")
+            data = self.api.get_barset(symbols, 'day', limit = lookback).df
+            data = data.iloc[:, data.columns.get_level_values(1)=='close'].swaplevel(axis=1)
+            data.columns = data.columns.droplevel()
+            data = data.ffill()
+            return data
